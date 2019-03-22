@@ -737,11 +737,11 @@ def instance_get_all(context, columns_to_join=None):
 
 def instance_get_count_by_name(context, name, columns_to_join=None):
     """Get all instances."""
-    db_items =  instance_get_all_by_filters(context, filters='name')
+    db_items = IMPL.instance_get_all(context, columns_to_join=columns_to_join)
     count = 0
     for item in db_items:
-        if name in db_items:
-            if db_items.find(name,0,-1):
+        if name in db_items['name']:
+            if db_items['name'].find(name,0,-1):
             # If the name starts with our instance name
                 count+=1
     return count
