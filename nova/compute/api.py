@@ -566,11 +566,13 @@ class API(base.Base):
             'auto_disk_config': auto_disk_config
         }
 
-    def _new_instance_name_from_template(self, uuid, display_name, index):
+    def _new_instance_name_from_template(self, uuid, display_name, index,
+                                         project_name):
         params = {
             'uuid': uuid,
             'name': display_name,
             'count': index + 1,
+            'project': project_name,
         }
         try:
             new_name = (CONF.multi_instance_display_name_template %
@@ -581,10 +583,11 @@ class API(base.Base):
             new_name = display_name
         return new_name
 
-    def _apply_instance_name_template(self, context, instance, index):
+    def _apply_instance_name_template(self, context, instance, index,
+                                      project_name):
         original_name = instance.display_name
         new_name = self._new_instance_name_from_template(instance.uuid,
-                instance.display_name, index)
+                instance.display_name, index, project_name)
         instance.display_name = new_name
         if not instance.get('hostname', None):
             if utils.sanitize_hostname(original_name) == "":
@@ -1529,9 +1532,11 @@ class API(base.Base):
 
         self._populate_instance_names(instance, num_instances)
         instance.shutdown_terminate = shutdown_terminate
-        if num_instances > 1 and self.cell_type != 'api':
+        if self.cell_type != 'api' and (
+            num_instances > 1 or (
+                num_instances == 1 and CONF.force_multi_instance_display_name):
             instance = self._apply_instance_name_template(context, instance,
-                                                          index)
+                                                          index, context.project_name)
 
         return instance
 

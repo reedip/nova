@@ -111,6 +111,11 @@ Possible values:
 
 * Valid keys for the template are: name, uuid, count.
 """),
+    cfg.BoolOpt('force_multi_instance_display_name',
+        default=False,
+        help="""
+Apply multi_instance_display_name_template to single instances as well"""),
+
     cfg.IntOpt('max_local_block_devices',
         default=3,
         help="""
