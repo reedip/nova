@@ -115,7 +115,12 @@ Possible values:
         default=False,
         help="""
 Apply multi_instance_display_name_template to single instances as well"""),
-
+    cfg.BoolOpt('append_project_name_multi_instance_name',
+        default=False,
+        help="""
+Enable this option if you want to add Project name to the Multi Instance
+Display Name. The Naming Convention would be VM_NAME-PROJECT_NAME-COUNT
+"""),
     cfg.IntOpt('max_local_block_devices',
         default=3,
         help="""

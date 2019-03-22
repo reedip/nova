@@ -735,16 +735,24 @@ def instance_get_all(context, columns_to_join=None):
     """Get all instances."""
     return IMPL.instance_get_all(context, columns_to_join=columns_to_join)
 
+
 def instance_get_count_by_name(context, name, columns_to_join=None):
     """Get all instances."""
     db_items = IMPL.instance_get_all(context, columns_to_join=columns_to_join)
-    count = 0
+    index = 0
     for item in db_items:
-        if name in db_items['name']:
-            if db_items['name'].find(name,0,-1):
-            # If the name starts with our instance name
-                count+=1
-    return count
+        display_name = item['display_name'].split('-')
+        if name == display_name[0]:
+            try:
+                index = int(display_name[1])
+                # Index will fetch the last value in the DB,
+                # which would be the highest value.
+            except ValueError:
+                continue
+            except IndexError:
+                continue
+    return index
+
 
 def instance_get_all_by_filters(context, filters, sort_key='created_at',
                                 sort_dir='desc', limit=None, marker=None,

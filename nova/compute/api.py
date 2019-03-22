@@ -53,6 +53,7 @@ import nova.conf
 from nova.consoleauth import rpcapi as consoleauth_rpcapi
 from nova import context as nova_context
 from nova import crypto
+from nova.db import api
 from nova.db import base
 from nova import exception
 from nova import exception_wrapper
@@ -572,8 +573,11 @@ class API(base.Base):
             'uuid': uuid,
             'name': display_name,
             'count': index + 1,
-            'project': project_name,
         }
+        if CONF.append_project_name_multi_instance_name:
+            params['project'] = project_name
+            CONF.set_override('multi_instance_display_name_template',
+                              '%(name)s:%(project)s-%(count)d')    
         try:
             new_name = (CONF.multi_instance_display_name_template %
                         params)
@@ -585,7 +589,10 @@ class API(base.Base):
 
     def _apply_instance_name_template(self, context, instance, index,
                                       project_name):
-        original_name = instance.display_name
+        original_name = name = instance.display_name
+        if CONF.append_project_name_multi_instance_name:
+            name += ':' + project_name
+        index += api.instance_get_count_by_name(context, name)
         new_name = self._new_instance_name_from_template(instance.uuid,
                 instance.display_name, index, project_name)
         instance.display_name = new_name
@@ -1529,14 +1536,14 @@ class API(base.Base):
             instance.security_groups = objects.SecurityGroupList()
         else:
             instance.security_groups = security_groups
-
         self._populate_instance_names(instance, num_instances)
         instance.shutdown_terminate = shutdown_terminate
         if self.cell_type != 'api' and (
             num_instances > 1 or (
-                num_instances == 1 and CONF.force_multi_instance_display_name):
+                num_instances == 1 and CONF.force_multi_instance_display_name)):
             instance = self._apply_instance_name_template(context, instance,
-                                                          index, context.project_name)
+                                                          index,
+                                                          context.project_name)
 
         return instance
 
