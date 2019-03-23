@@ -9371,6 +9371,27 @@ class ComputeAPITestCase(BaseTestCase):
             self.assertEqual(refs[i]['display_name'], name)
             self.assertEqual(refs[i]['hostname'], hostname)
 
+    def _multi_instance_display_name_with_project(self, cells_enabled=False,
+                                                  project_enabled=False):
+        CONF.set_override('force_multi_instance_display_name',
+                          True)
+        name = 'x' if cells_enabled else 'x-%s' % (1,)
+        if project_enabled:
+            CONF.set_override('append_project_name_multi_instance_name',
+                              True)
+            if not self.context.project_name:
+                self.context.project_name = "dummy" 
+            name = 'x' if cells_enabled else 'x:%s-%s' % ('dummy',1,)
+        (refs, resv_id) = self.compute_api.create(self.context,
+                flavors.get_default_flavor(),
+                image_href=uuids.image_href_id,
+                display_name='x')
+        self.assertEqual(refs[0]['display_name'], name)
+
+    def test_multi_instance_display_name_with_project(self):
+        self._multi_instance_display_name_with_project(project_enabled=False)
+        self._multi_instance_display_name_with_project(project_enabled=True)
+
     def test_instance_architecture(self):
         # Test the instance architecture.
         i_ref = self._create_fake_instance_obj()
