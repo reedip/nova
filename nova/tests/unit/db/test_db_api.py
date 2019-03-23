@@ -2701,6 +2701,19 @@ class InstanceTestCase(test.TestCase, ModelsObjectComparatorMixin):
         result = db.instance_get_by_uuid(self.ctxt, inst['uuid'])
         self._assertEqualInstances(inst, result)
 
+    def test_instance_get_count_by_name(self):
+        # Case with Match found in the proper syntax (VM_NAME-Count)
+        inst = self.create_instance_with_args(display_name='dummy-1')
+        result = db.instance_get_count_by_name(self.ctxt, "dummy")
+        self.assertEqual(1, result)
+        # Case with Match not found due to inconsistent format/wrong name
+        inst = self.create_instance_with_args(display_name='dummy')
+        result = db.instance_get_count_by_name(self.ctxt, "dum")
+        self.assertEqual(0, result)
+        inst = self.create_instance_with_args(display_name='ironman')
+        result = db.instance_get_count_by_name(self.ctxt, "dum")
+        self.assertEqual(0, result)
+
     def test_instance_get_by_uuid_join_empty(self):
         inst = self.create_instance_with_args()
         result = db.instance_get_by_uuid(self.ctxt, inst['uuid'],
