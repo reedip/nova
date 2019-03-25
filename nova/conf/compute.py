@@ -629,6 +629,11 @@ Possible values:
 * -1: disable
 * Any other value
 """),
+    cfg.IntOpt('custom_event_timeout',
+        default=100,
+        help="""
+Interval for custom event timeout
+"""),
     cfg.IntOpt('bandwidth_poll_interval',
         default=600,
         help="""
