@@ -24,9 +24,11 @@ EVENT_NAMES = [
     'network-vif-unplugged',
     'network-vif-deleted',
 
+    # Custom Event
+    'custom-event',
 ]
 
-EVENT_STATUSES = ['failed', 'completed', 'in-progress']
+EVENT_STATUSES = ['failed', 'completed', 'in-progress', 'finished']
 
 
 @obj_base.NovaObjectRegistry.register

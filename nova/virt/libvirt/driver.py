@@ -5215,6 +5215,30 @@ class LibvirtDriver(driver.ComputeDriver):
                          block_device_info=block_device_info,
                          destroy_disks=destroy_disks)
 
+    def _get_thirdparty_events(self):
+        LOG.info(_LI("Calling third party event"))
+        return "custom-event"
+
+    def _thirdparty_failed_callback(self):
+        LOG.info(_LI("Failed event generated from Third Party"))
+        return Exception("Third party event failed")
+
+    def _call_third_party_app(self, instance):
+        LOG.info(_LI("Calling Third Party Application here"))
+        timeout = CONF.custom_event_timeout
+        events = self._get_thirdparty_events()
+        if timeout:
+            LOG.info(_LI("Waiting for the event to occur"))
+            try:
+                while self.virtapi.wait_for_instance_event(
+                    instance, events, deadline=timeout,
+                    error_callback=self._thirdparty_failed_callback):
+                    pass
+            except eventlet.timeout.Timeout:
+                LOG.error(_LE("No callback arrived from third party...failing..."))
+                excutils.save_and_reraise_exception()
+
+
     def _create_domain_and_network(self, context, xml, instance, network_info,
                                    disk_info, block_device_info=None,
                                    power_on=True, reboot=False,
@@ -5264,7 +5288,7 @@ class LibvirtDriver(driver.ComputeDriver):
                     guest = self._create_domain(
                         xml, pause=pause, power_on=power_on,
                         post_xml_callback=post_xml_callback)
-
+                self._call_third_party_app(instance)
                 self.firewall_driver.apply_instance_filter(instance,
                                                            network_info)
         except exception.VirtualInterfaceCreateException:
