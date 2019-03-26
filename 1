@@ -14911,6 +14911,72 @@ class LibvirtConnTestCase(test.NoDBTestCase):
             self.assertEqual(0, create.call_args_list[0][1]['pause'])
             self.assertEqual(0, domain.resume.call_count)
 
+    def _test_create_with_custom_event(self, c_failure=None):
+        generated_events = []
+
+        def wait_timeout():
+            event = mock.MagicMock()
+            if c_failure == 'timeout':
+                raise eventlet.timeout.Timeout()
+            elif c_failure == 'error':
+                event.status = 'failed'
+            else:
+                event.status = 'finished'
+            return event
+
+        def fake_prepare(instance, event_name):
+            m = mock.MagicMock()
+            m.instance = instance
+            m.event_name = event_name
+            m.wait.side_effect = wait_timeout
+            generated_events.append(m)
+            return m
+
+        virtapi = manager.ComputeVirtAPI(mock.MagicMock())
+        prepare = virtapi._compute.instance_events.prepare_for_instance_event
+        prepare.side_effect = fake_prepare
+        drvr = libvirt_driver.LibvirtDriver(virtapi, False)
+        instance = objects.Instance(vm_state=vm_states.BUILDING,
+                                    **self.test_instance)
+        vifs = [{'id': 'vif1', 'active': False},
+                {'id': 'vif2', 'active': False}]
+
+        @mock.patch.object(drvr, 'plug_vifs')
+        @mock.patch.object(drvr, 'firewall_driver')
+        @mock.patch.object(drvr, '_create_domain')
+        @mock.patch.object(drvr, 'cleanup')
+        def test_create(cleanup, create, fw_driver, plug_vifs):
+            domain = drvr._create_domain_and_network(self.context, 'xml',
+                                                     instance, vifs, None,
+                                                     power_on=power_on)
+            plug_vifs.assert_called_with(instance, vifs)
+
+            pause = self._get_pause_flag(drvr, vifs, power_on=power_on)
+            self.assertEqual(pause,
+                             create.call_args_list[0][1]['pause'])
+            if pause:
+                domain.resume.assert_called_once_with()
+        test_create()
+        if utils.is_neutron() and CONF.custom_event_timeout:
+            for event in generated_events:
+                if c_failure and generated_events.index(event) != 0:
+                    self.assertEqual(0, event.call_count)
+                elif c_failure == 'error':
+                    event.wait.assert_called_once_with()
+        else:
+            self.assertEqual(0, prepare.call_count)
+
+    @mock.patch('nova.utils.is_neutron', return_value=True)
+    def test_create_with_custom_events(self, is_neutron):
+        self._test_create_with_custom_event(self, c_failure=None)
+
+    @mock.patch('nova.utils.is_neutron', return_value=True)
+    def test_create_with_custom_events_timeout(self, is_neutron):
+        self._test_create_with_custom_event(self, c_failure='timeout')
+
+    def test_create_with_custom_events_failed(self):
+        self._test_create_with_custom_event(self, c_failure='error')
+
     def _test_create_with_network_events(self, neutron_failure=None,
                                          power_on=True):
         generated_events = []
@@ -16040,77 +16106,6 @@ class LibvirtConnTestCase(test.NoDBTestCase):
         self.assertEqual(info[0]['disk_size'], 827327254)
         self.assertEqual(info[0]['over_committed_disk_size'], 20647509226)
         self.assertEqual(info[0]['virt_disk_size'], 21474836480)
-
-    def _test_create_with_custom_event(self, c_failure=None):
-        generated_events = []
-
-        def wait_timeout():
-            event = mock.MagicMock()
-            if c_failure == 'timeout':
-                raise eventlet.timeout.Timeout()
-            elif c_failure == 'error':
-                event.status = 'failed'
-            else:
-                event.status = 'finished'
-            return event
-
-        def fake_prepare(instance, event_name):
-            m = mock.MagicMock()
-            m.instance = instance
-            m.event_name = event_name
-            m.wait.side_effect = wait_timeout
-            generated_events.append(m)
-            return m
-
-        virtapi = manager.ComputeVirtAPI(mock.MagicMock())
-        prepare = virtapi._compute.instance_events.prepare_for_instance_event
-        prepare.side_effect = fake_prepare
-        drvr = libvirt_driver.LibvirtDriver(virtapi, False)
-        instance = objects.Instance(vm_state=vm_states.BUILDING,
-                                    **self.test_instance)
-        vifs = [{'id': 'vif1', 'active': False},
-                {'id': 'vif2', 'active': False}]
-
-        @mock.patch.object(drvr, 'plug_vifs')
-        @mock.patch.object(drvr, 'firewall_driver')
-        @mock.patch.object(drvr, '_create_domain')
-        @mock.patch.object(drvr, 'cleanup')
-        def test_create(cleanup, create, fw_driver, plug_vifs):
-            domain = drvr._create_domain_and_network(self.context, 'xml',
-                                                     instance, vifs, None,
-                                                     power_on=True)
-            plug_vifs.assert_called_with(instance, vifs)
-
-            pause = self._get_pause_flag(drvr, vifs, power_on=True)
-            self.assertEqual(pause,
-                             create.call_args_list[0][1]['pause'])
-            if pause:
-                domain.resume.assert_called_once_with()
-        test_create()
-        if utils.is_neutron() and CONF.custom_event_timeout:
-            for event in generated_events:
-                if c_failure and generated_events.index(event) != 0:
-                    self.assertEqual(0, event.call_count)
-                elif c_failure == 'error':
-                    event.wait.assert_called_once_with()
-        else:
-            self.assertEqual(0, prepare.call_count)
-
-    @mock.patch('nova.utils.is_neutron', return_value=True)
-    def test_create_with_custom_events(self, is_neutron):
-        self._test_create_with_custom_event(c_failure=None)
-
-    @mock.patch('nova.utils.is_neutron', return_value=True)
-    def test_create_with_custom_events_timeout(self, is_neutron):
-        self.assertRaises(exception.VirtualInterfaceCreateException,
-                          self._test_create_with_custom_event,
-                          c_failure='timeout')
-
-    @mock.patch('nova.utils.is_neutron', return_value=True)
-    def test_create_with_custom_events_failed(self, is_neutron):
-        self.assertRaises(Exception,
-                          self._test_create_with_custom_event,
-                          c_failure='error')
 
 
 class HostStateTestCase(test.NoDBTestCase):

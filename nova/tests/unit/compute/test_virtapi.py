@@ -118,7 +118,23 @@ class ComputeVirtAPITest(VirtAPIBaseTest):
             self.assertEqual('it worked', result)
             mock_call.assert_called_once_with(self.context, *args, **kwargs)
 
-    def test_wait_for_instance_event(self):
+    def test_wait_for_instance_event_finished(self):
+        def _finished():
+            event = mock.MagicMock()
+            event.status = 'finished'
+            return event
+
+        @mock.patch.object(self.virtapi._compute, '_event_waiter', _finished)
+        def do_test():
+            with self.virtapi.wait_for_instance_event('instance',
+                                                      ['custom-event']):
+                pass
+            self.assertEqual(1, len(self.compute._events))
+            for event in self.compute._events:
+                self.assertEqual('instance', event.instance)
+                event.wait.assert_called_once_with()
+
+    def test_wait_for_instance_event(self, status=None):
         and_i_ran = ''
         event_1_tag = objects.InstanceExternalEvent.make_key(
             'event1')
