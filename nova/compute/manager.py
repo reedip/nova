@@ -478,7 +478,7 @@ class ComputeVirtAPI(virtapi.VirtAPI):
         with eventlet.timeout.Timeout(deadline):
             for event_name, event in events.items():
                 actual_event = event.wait()
-                if actual_event.status == 'completed':
+                if actual_event.status in ['completed', 'finished']:
                     continue
                 decision = error_callback(event_name, instance)
                 if decision is False:
