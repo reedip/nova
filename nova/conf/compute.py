@@ -630,7 +630,7 @@ Possible values:
 * Any other value
 """),
     cfg.IntOpt('custom_event_timeout',
-        default=100,
+        default=200,
         help="""
 Interval for custom event timeout
 """),
