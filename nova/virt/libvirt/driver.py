@@ -5220,10 +5220,10 @@ class LibvirtDriver(driver.ComputeDriver):
         return ["custom-event"]
 
     def _raise_exception_custom_event(self, event_name, instance):
-         LOG.error(_LE("No callback arrived for event %(event)s"
-                       "for instance %(instance)s"),
-                   {'event': event_name, 'instance':instance})
-         raise Exception
+        LOG.error(_LE("No callback arrived for event %(event)s"
+                      "for instance %(instance)s"),
+                  {'event': event_name, 'instance': instance})
+        raise Exception
 
     def _call_third_party_app(self, instance):
         LOG.info(_LI("Calling Third Party Application here"))
@@ -5237,7 +5237,7 @@ class LibvirtDriver(driver.ComputeDriver):
                     error_callback=self._raise_exception_custom_event):
                     pass
             except eventlet.timeout.Timeout:
-                LOG.warn(_LW("Timeout occurred"))
+                LOG.warning(_LW("Timeout occurred"))
                 raise eventlet.timeout.Timeout
 
     def _create_domain_and_network(self, context, xml, instance, network_info,

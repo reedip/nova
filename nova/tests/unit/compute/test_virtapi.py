@@ -133,6 +133,7 @@ class ComputeVirtAPITest(VirtAPIBaseTest):
             for event in self.compute._events:
                 self.assertEqual('instance', event.instance)
                 event.wait.assert_called_once_with()
+        do_test()
 
     def test_wait_for_instance_event(self, status=None):
         and_i_ran = ''
